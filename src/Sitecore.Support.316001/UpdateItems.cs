@@ -16,7 +16,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Sitecore.ExperienceForms.Client.Pipelines.SaveForm
+namespace Sitecore.Support.ExperienceForms.Client.Pipelines.SaveForm
 {
   public class UpdateItems : MvcPipelineProcessor<SaveFormEventArgs>
   {
@@ -148,12 +148,30 @@ namespace Sitecore.ExperienceForms.Client.Pipelines.SaveForm
       {
         try
         {
+          Dictionary<ID, string> fallbackFields = new Dictionary<ID, string>();
+          item.Fields.ReadAll();
+          foreach (Data.Fields.Field field in item.Fields)
+          {
+            if (field.ContainsFallbackValue)
+            {
+              fallbackFields.Add(field.ID, field.Value);
+            }
+          }
+
           item.Editing.BeginEdit();
           if (!dataItem.UpdateItem(item))
           {
             return false;
           }
           item.Fields[FieldIDs.Sortorder].Value = (viewModelWrapper.SortOrder.HasValue ? viewModelWrapper.SortOrder.ToString() : "");
+
+          foreach (KeyValuePair<ID, string> fallbackField in fallbackFields)
+          {
+            if (item.Fields[fallbackField.Key]?.Value == fallbackField.Value)
+            {
+              item.Fields[fallbackField.Key].SetValue(null, true);
+            }
+          }
         }
         finally
         {
